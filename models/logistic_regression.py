@@ -99,16 +99,16 @@ def compute_loss(y_true, y_pred): # computes binary cross entropy loss
 
 # i will implement Mini-Batch Gradient Descent as it is the middle ground between Batch 
 # Gradient Descent (BGD) and Stochastic Gradient Descent (SGD)
-def compute_gradients(X, y_true, y_pred, W, b, batch_size = 32, shuffle = True): # computes gradients
+def compute_gradients(X_batch, y_batch, y_pred_batch, W, b, batch_size = 32, shuffle = True): # computes gradients
     """
     PURPOSE:
     Compute the gradients (derivatives) of the loss with respect to W and b
     Needed for updating parameters using gradient descent
 
     INPUT:
-    X: Feature matrix of shape (m, n_features)
-    y_true: True labels of shape (m,)
-    y_pred: Predicted probabilities of shape (m,)
+    X_batch: Feature matrix of shape (m, n_features)
+    y_batch: True labels of shape (m,)
+    y_pred_batch: Predicted probabilities of shape (m,)
     batch_size: (
         if batch_size = m then it's equivalent to Batch GD
         if batch_size = 1 then it's equivalent to Stochastic GD
@@ -119,20 +119,7 @@ def compute_gradients(X, y_true, y_pred, W, b, batch_size = 32, shuffle = True):
     dW: A numpy array of shape (n_features,) (gradient for W)
     db: A scalar (gradient for b)
     """ 
-    m, n_features = X.shape
-
-    if batch_size > m:
-        raise ValueError("Batch size must be <= number of samples (m)")
-    
-    if shuffle and batch_size < m:
-        indices = np.random.permutation(m)
-        X, y_true = X[indices], y_true[indices]
-
-    # splitting shuffle subset of the dataset accordingly to the batch size
-    X_batch = X[:batch_size]
-    y_batch = y_true[:batch_size]
-
-    y_pred_batch = predict(X_batch, W, b)
+    batch_size = X_batch.shape[0] 
 
     dZ = y_pred_batch - y_batch # computing error term
     XT = X_batch.T # transposing X(feature matrix)
@@ -168,7 +155,7 @@ def update_parameters(W, b, dW, db, alpha = 0.01): # updates weights
     return W, b 
 
 
-def train(X_train, y_train, epochs = 8, alpha = 0.01, batch_size = 2): # runs gradient descent
+def train(X_train, y_train, epochs = 20, alpha = 0.01, batch_size = 2): # runs gradient descent
     """  
     PURPOSE:
     Train the model using gradient descent.
@@ -189,12 +176,24 @@ def train(X_train, y_train, epochs = 8, alpha = 0.01, batch_size = 2): # runs gr
     W, b = initialize_weights(n_features)
 
     for epoch in range(epochs):
-        y_pred = predict(X_train, W, b)
-        loss = compute_loss(y_train, y_pred)
-        dW, db = compute_gradients(X_train, y_train, y_pred, W, b, batch_size)
-        W, b = update_parameters(W, b, dW, db, alpha)
+        indices = np.arange(m)
+        np.random.shuffle(indices) # Shuffle dataset at the start of each epoch
+        X_train, y_train = X_train[indices], y_train[indices]
 
-        print(f"Epoch {epoch+1}: Loss = {loss:.4f}, W = {W}, b = {b}")
+        epoch_loss = 0  
+        for i in range(0, m, batch_size):
+            X_batch = X_train[i:i+batch_size]
+            y_batch = y_train[i:i+batch_size]
+
+            y_pred_batch = predict(X_batch, W, b)
+            batch_loss = compute_loss(y_batch, y_pred_batch)
+            epoch_loss += batch_loss
+
+            dW, db = compute_gradients(X_batch, y_batch, y_pred_batch, W, b)
+            W, b = update_parameters(W, b, dW, db, alpha)
+
+        avg_loss = epoch_loss / (m // batch_size)
+        print(f"Epoch {epoch+1}: Loss = {avg_loss:.4f}, W[:5] = {W[:5] if len(W) > 5 else W}, b = {b:.4f}")
 
 
 
