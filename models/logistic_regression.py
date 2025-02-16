@@ -16,6 +16,7 @@ def initialize_weights(n_features): # initializes weights and bias
     b: A scalar value (usually initialized to 0) ==> Bias
     """ 
     W = np.zeros((n_features, ))
+    # W = np.random.randn(n_features) * 0.01  # randomizing
     b = 0
 
     return W, b
@@ -118,49 +119,101 @@ def compute_gradients(X, y_true, y_pred, W, b, batch_size = 32, shuffle = True):
     dW: A numpy array of shape (n_features,) (gradient for W)
     db: A scalar (gradient for b)
     """ 
-    m = X.shape[0]
+    m, n_features = X.shape
 
-    if batch_size <= m:
-        """  
-        NOTE: Actually for me there is no need for shuffling or selecting a subset when batch_size is equal to m
-        """
-        # reconstructing the total dataset with their y_true
-        stack_X_Y = np.hstack((X, y_true.reshape(-1, 1))) 
+    if batch_size > m:
+        raise ValueError("Batch size must be <= number of samples (m)")
+    
+    if shuffle and batch_size < m:
+        indices = np.random.permutation(m)
+        X, y_true = X[indices], y_true[indices]
 
-        if shuffle:
-            shuffle_X = np.random.permutation(stack_X_Y) # it shuffles along the indices
-            # splitting shuffle subset of the dataset accordingly to the batch size
-            batch = shuffle_X[:batch_size]
-        else:
-            batch = stack_X_Y[:batch_size]
-        X_batch = batch[:, :-1]
-        y_batch = batch[:, -1].flatten() # assuring to be on 1D form by using flatten
+    # splitting shuffle subset of the dataset accordingly to the batch size
+    X_batch = X[:batch_size]
+    y_batch = y_true[:batch_size]
 
-        y_pred_batch = predict(X_batch, W, b)
-        loss_batch = compute_loss(y_batch, y_pred_batch)
+    y_pred_batch = predict(X_batch, W, b)
 
-        dZ = y_pred_batch - y_batch # computing error term
-        XT = X_batch.T # transposing X(feature matrix)
-        dW = (1 / batch_size) * np.dot(XT, dZ) # following standard implementations by reshaping it to column vector
-        db = (1 / batch_size) * np.sum(dZ)
-    else:
-        print("Error: check the batch size and see, should be(batch_size <= m)")
-        return None, None
+    dZ = y_pred_batch - y_batch # computing error term
+    XT = X_batch.T # transposing X(feature matrix)
+    dW = (1 / batch_size) * np.dot(XT, dZ) # following standard implementations by reshaping it to column vector
+    db = (1 / batch_size) * np.sum(dZ)
 
     return dW, db
 
 
 
-def update_parameters(W, b, dW, db, alpha): # updates weights
-    pass 
+def update_parameters(W, b, dW, db, alpha = 0.01): # updates weights
+    """  
+    PURPOSE:
+    Update W and b using gradient descent.
+    W = W - alpha * dW
+    b = b - alpha * db
+
+    INPUT:
+    W: Current weight vector (n_features,).
+    b: Current bias scalar.
+    dW: Gradient for W (n_features,).
+    db: Gradient for b (scalar).
+    alpha: Learning rate (scalar)
+
+    OUTPUT:
+    W: Updated weight vector (n_features,).
+    b: Updated bias scalar
+    """ 
+
+    W = W - alpha * dW 
+    b = b - alpha * db
+    
+    return W, b 
 
 
-def train(X_train, y_train, epochs, alpha): # runs gradient descent
-    pass 
+def train(X_train, y_train, epochs = 8, alpha = 0.01, batch_size = 2): # runs gradient descent
+    """  
+    PURPOSE:
+    Train the model using gradient descent.
+    Iteratively update W and b for epochs iterations.
+
+    INPUT:
+    X_train: Training data (m, n_features).
+    y_train: Training labels (m,).
+    epochs: Number of training iterations (scalar).
+    alpha: Learning rate (scalar).
+
+    OUTPUT:(PRINT IN THIS CASE FOR MONITORING TRAINING PROGRESS)
+    W: Final trained weight vector (n_features,).
+    b: Final trained bias scalar.
+    Optionally, you can also return the loss history for analysis.
+    """ 
+    m, n_features = X_train.shape
+    W, b = initialize_weights(n_features)
+
+    for epoch in range(epochs):
+        y_pred = predict(X_train, W, b)
+        loss = compute_loss(y_train, y_pred)
+        dW, db = compute_gradients(X_train, y_train, y_pred, W, b, batch_size)
+        W, b = update_parameters(W, b, dW, db, alpha)
+
+        print(f"Epoch {epoch+1}: Loss = {loss:.4f}, W = {W}, b = {b}")
+
 
 
 def evaluate(X_test, y_test, W, b): # Measures model performance
-    pass 
+    """  
+    PURPOSE:
+    Measure the model's accuracy on test data.
+    Convert probabilities into binary predictions (0 or 1).
+    Compare with true labels.
+
+    INPUT:
+    X_test: Test data (m, n_features).
+    y_test: True labels (m,).
+    W: Trained weight vector (n_features,).
+    b: Trained bias scalar.
+
+    OUTPUT:
+    accuracy: A scalar value representing the percentage of correct predictions.
+    """ 
 
 
 
@@ -176,6 +229,7 @@ res1 = sigmoid(z_scalar)
 res2 = sigmoid(z_array)
 print(res1)
 print(res2) """
+
 
 """ X = np.array([
     [1.0, 2.0, 3.0],
@@ -210,7 +264,7 @@ loss = compute_loss(y_true, y_pred)
 print(f"loss: {loss}") """
 
 
-X = np.array([
+""" X = np.array([
     [1.0, 2.0, 3.0],
     [4.0, 5.0, 6.0], 
     [7.0, 8.0, 9.0],  
@@ -230,4 +284,30 @@ loss = compute_loss(y_true, y_pred)
 print(f"loss: {loss}")
 
 dW, db = compute_gradients(X, y_true, y_pred, W, b, 2)
-print(f"dW: {dW}, db: {db}")
+print(f"dW: {dW}, db: {db}") """
+
+
+X = np.array([
+    [1.0, 2.0, 3.0],
+    [4.0, 5.0, 6.0], 
+    [7.0, 8.0, 9.0],  
+    [10.0, 11.0, 12.0],  
+    [13.0, 14.0, 15.0],
+])
+
+y_true = np.array([1, 0, 0, 1, 1])
+
+n_features = X.shape[1]
+W, b = initialize_weights(n_features)
+""" epochs = 10  # Number of updates before stopping
+alpha = 0.01  # Learning rate
+
+for epoch in range(epochs):
+    y_pred = predict(X, W, b)
+    loss = compute_loss(y_true, y_pred)
+    dW, db = compute_gradients(X, y_true, y_pred, W, b, 2)
+    W, b = update_parameters(W, b, dW, db, alpha)
+    
+    print(f"Epoch {epoch+1}: Loss = {loss:.4f}, W = {W}, b = {b}") """
+
+train(X, y_true)
