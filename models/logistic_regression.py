@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 
 
@@ -15,8 +16,8 @@ def initialize_weights(n_features): # initializes weights and bias
     W: A numpy array of shape (n_features,), initialized to small values (e.g., zeros)
     b: A scalar value (usually initialized to 0) ==> Bias
     """ 
-    W = np.zeros((n_features, ))
-    # W = np.random.randn(n_features) * 0.01  # randomizing
+    # W = np.zeros((n_features, ))
+    W = np.random.randn(n_features) * 0.01
     b = 0
 
     return W, b
@@ -34,6 +35,7 @@ def sigmoid(z): # computes the sigmoid function
     OUTPUT:
     sigmoid(z): A scalar or numpy array of the same shape as z, with values between 0 and 1.
     """ 
+    z = np.clip(z, -500, 500) # prevent extreme large values
 
     return 1 / (1 + np.exp(-z)) # using np.exp() instead of math.pow() or math.exp() because these works only for scalar Thus error when Numpy array
 
@@ -86,6 +88,9 @@ def compute_loss(y_true, y_pred): # computes binary cross entropy loss
 
     # number of total row in the dataset
     m = y_true.shape[0]
+    epsilon = 1e-10 # small value to prevent log(0)
+
+    y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
 
     sum = 0
 
@@ -155,7 +160,7 @@ def update_parameters(W, b, dW, db, alpha = 0.01): # updates weights
     return W, b 
 
 
-def train(X_train, y_train, epochs = 20, alpha = 0.01, batch_size = 2): # runs gradient descent
+def train(X_train, y_train, alpha = 0.01, epochs = 20, batch_size = 2): # runs gradient descent
     """  
     PURPOSE:
     Train the model using gradient descent.
@@ -192,9 +197,10 @@ def train(X_train, y_train, epochs = 20, alpha = 0.01, batch_size = 2): # runs g
             dW, db = compute_gradients(X_batch, y_batch, y_pred_batch, W, b)
             W, b = update_parameters(W, b, dW, db, alpha)
 
-        avg_loss = epoch_loss / (m // batch_size)
+        avg_loss = epoch_loss / (m / batch_size)
         print(f"Epoch {epoch+1}: Loss = {avg_loss:.4f}, W[:5] = {W[:5] if len(W) > 5 else W}, b = {b:.4f}")
 
+    return W, b
 
 
 def evaluate(X_test, y_test, W, b): # Measures model performance
@@ -214,33 +220,18 @@ def evaluate(X_test, y_test, W, b): # Measures model performance
     accuracy: A scalar value representing the percentage of correct predictions.
     """ 
 
+    y_pred_prob = sigmoid(np.dot(X_test, W) + b)
+    y_pred = (y_pred_prob >= 0.5).astype(int)
 
+    accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
 
-
-""" no_features = 4
-res = initialize_weights(no_features)
-print(res) """
-
-
-""" z_scalar = 2
-z_array = np.array([-1, 0, 1, 2])
-res1 = sigmoid(z_scalar)
-res2 = sigmoid(z_array)
-print(res1)
-print(res2) """
-
-
-""" X = np.array([
-    [1.0, 2.0, 3.0],
-    [4.0, 5.0, 6.0], 
-    [7.0, 8.0, 9.0],  
-    [10.0, 11.0, 12.0],  
-    [13.0, 14.0, 15.0],
-])  
-n_features = X.shape[1]
-W, b = initialize_weights(n_features)
-res = predict(X, W, b)
-print(f" predicted: {res}") """
+    print(f"Accuracy: {accuracy:.4f}")
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall: {recall:.4f}")
+    print(f"F1-Score: {f1:.4f}")
 
 
 """ X = np.array([
@@ -255,12 +246,8 @@ y_true = np.array([1, 0, 0, 1, 1])
 
 n_features = X.shape[1]
 W, b = initialize_weights(n_features)
-y_pred = predict(X, W, b)
-print(f"actual: {y_true}")
-print(f"predicted: {y_pred}")
 
-loss = compute_loss(y_true, y_pred)
-print(f"loss: {loss}") """
+train(X, y_true, 0.005) """
 
 
 """ X = np.array([
@@ -273,40 +260,18 @@ print(f"loss: {loss}") """
 
 y_true = np.array([1, 0, 0, 1, 1])
 
+# Feature normalization (standardization)
+def normalize(X):
+    mean = np.mean(X, axis=0)
+    std = np.std(X, axis=0)
+    return (X - mean) / std
+
+X_normalized = normalize(X)
+
+# Initialize weights
 n_features = X.shape[1]
 W, b = initialize_weights(n_features)
-y_pred = predict(X, W, b)
-print(f"actual: {y_true}")
-print(f"predicted: {y_pred}")
 
-loss = compute_loss(y_true, y_pred)
-print(f"loss: {loss}")
-
-dW, db = compute_gradients(X, y_true, y_pred, W, b, 2)
-print(f"dW: {dW}, db: {db}") """
-
-
-X = np.array([
-    [1.0, 2.0, 3.0],
-    [4.0, 5.0, 6.0], 
-    [7.0, 8.0, 9.0],  
-    [10.0, 11.0, 12.0],  
-    [13.0, 14.0, 15.0],
-])
-
-y_true = np.array([1, 0, 0, 1, 1])
-
-n_features = X.shape[1]
-W, b = initialize_weights(n_features)
-""" epochs = 10  # Number of updates before stopping
-alpha = 0.01  # Learning rate
-
-for epoch in range(epochs):
-    y_pred = predict(X, W, b)
-    loss = compute_loss(y_true, y_pred)
-    dW, db = compute_gradients(X, y_true, y_pred, W, b, 2)
-    W, b = update_parameters(W, b, dW, db, alpha)
-    
-    print(f"Epoch {epoch+1}: Loss = {loss:.4f}, W = {W}, b = {b}") """
-
-train(X, y_true)
+# Training execution
+if __name__ == "__main__":
+    train(X_normalized, y_true, 0.005)   """
